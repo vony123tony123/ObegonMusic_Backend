@@ -1,0 +1,6 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "module": "commonjs",          // 也要確保這行是 commonjs
+  }
+}
