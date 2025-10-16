@@ -1,0 +1,480 @@
+{
+    "info": {
+        "_postman_id": "a8d1a1a1-91a1-4819-a1d1-a1a1a1a1a1a1",
+        "name": "MyExpressApp - Announcements",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "GraphQL",
+            "item": [
+                {
+                    "name": "1. Get All (Initial State)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test(\"Response is a valid JSON\", function () {",
+                                    "    pm.response.to.be.json;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "graphql",
+                            "graphql": {
+                                "query": "query GetAllAnnouncements {\n    getAll {\n        announcement_id\n        title\n        content_url\n        create_time\n        update_time\n        views\n    }\n}",
+                                "variables": ""
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/graphql",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "graphql"
+                            ]
+                        },
+                        "description": "Fetches all announcements to see the initial state."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "2. Create Announcement",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "// Verify status code is 200 OK",
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "// Parse the response JSON Body",
+                                    "const response = pm.response.json();",
+                                    "",
+                                    "// Verify that the announcement was created successfully",
+                                    "pm.test(\"Announcement was created successfully\", function () {",
+                                    "    pm.expect(response.data.create).to.be.an('object');",
+                                    "    pm.expect(response.data.create.title).to.eql(\"New Announcement for Testing\");",
+                                    "});",
+                                    "",
+                                    "// --- Script to save the ID for subsequent requests ---",
+                                    "const newId = response.data.create.announcement_id;",
+                                    "pm.collectionVariables.set(\"announcement_id\", newId);",
+                                    "console.log('Set announcement_id to: ' + newId);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "graphql",
+                            "graphql": {
+                                "query": "mutation CreateAnnouncement($input: AnnouncementInput!) {\n    create(input: $input) {\n        announcement_id\n        title\n        content_url\n        create_time\n        views\n    }\n}",
+                                "variables": "{\n    \"input\": {\n        \"title\": \"New Announcement for Testing\",\n        \"content_url\": \"/storage/announcement/test.mdx\"\n    }\n}"
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/graphql",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "graphql"
+                            ]
+                        },
+                        "description": "Creates a new announcement and saves its ID to the `announcement_id` collection variable."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "3. Get By ID (Verify Create)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "const response = pm.response.json();",
+                                    "const expectedId = pm.collectionVariables.get(\"announcement_id\");",
+                                    "",
+                                    "pm.test(\"Correct announcement was retrieved\", function () {",
+                                    "    pm.expect(response.data.getById.announcement_id).to.eql(expectedId);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "graphql",
+                            "graphql": {
+                                "query": "query GetAnnouncementById($announcementId: ID!) {\n    getById(announcement_id: $announcementId) {\n        announcement_id\n        title\n        content_url\n        create_time\n        update_time\n        views\n    }\n}",
+                                "variables": "{\n    \"announcementId\": \"{{announcement_id}}\"\n}"
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/graphql",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "graphql"
+                            ]
+                        },
+                        "description": "Fetches the announcement created in the previous step to verify it exists."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "4. Update Title",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"GraphQL response is successful\", function () {",
+                                    "    const response = pm.response.json();",
+                                    "    pm.expect(response.errors).to.be.undefined;",
+                                    "    pm.expect(response.data.updateTitle).to.not.be.null;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "graphql",
+                            "graphql": {
+                                "query": "mutation UpdateAnnouncementTitle($announcementId: ID!, $newTitle: String!) {\n    updateTitle(announcement_id: $announcementId, newTitle: $newTitle) {\n        announcement_id\n        title\n        content_url\n        create_time\n        update_time\n        views\n    }\n}",
+                                "variables": "{\n    \"announcementId\": \"{{announcement_id}}\",\n    \"newTitle\": \"Updated Title via Test Flow\"\n}"
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/graphql",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "graphql"
+                            ]
+                        },
+                        "description": "Updates the title of the announcement created."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "5. Increment Views",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"GraphQL response returns object with incremented view\", function () {",
+                                    "    const response = pm.response.json();",
+                                    "    pm.expect(response.errors).to.be.undefined;",
+                                    "    pm.expect(response.data.incrementViews).to.be.an('object');",
+                                    "    pm.expect(response.data.incrementViews.views).to.be.at.least(1);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "graphql",
+                            "graphql": {
+                                "query": "mutation IncrementAnnouncementViews($announcementId: ID!) {\n    incrementViews(announcement_id: $announcementId) {\n        announcement_id\n        title\n        content_url\n        create_time\n        update_time\n        views\n    }\n}",
+                                "variables": "{\n    \"announcementId\": \"{{announcement_id}}\"\n}"
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/graphql",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "graphql"
+                            ]
+                        },
+                        "description": "Increments the view count for the announcement."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "6. Get By ID (Verify Update)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "const response = pm.response.json();",
+                                    "",
+                                    "pm.test(\"Title was updated correctly\", function () {",
+                                    "    pm.expect(response.data.getById.title).to.eql(\"Updated Title via Test Flow\");",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Views count is at least 1\", function () {",
+                                    "    pm.expect(response.data.getById.views).to.be.at.least(1);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "graphql",
+                            "graphql": {
+                                "query": "query GetAnnouncementById($announcementId: ID!) {\n    getById(announcement_id: $announcementId) {\n        announcement_id\n        title\n        content_url\n        create_time\n        update_time\n        views\n    }\n}",
+                                "variables": "{\n    \"announcementId\": \"{{announcement_id}}\"\n}"
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/graphql",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "graphql"
+                            ]
+                        },
+                        "description": "Fetches the same announcement again to verify that the title and views were updated."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "7. Delete Announcement",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"GraphQL response is successful\", function () {",
+                                    "    const response = pm.response.json();",
+                                    "    pm.expect(response.errors).to.be.undefined;",
+                                    "    pm.expect(response.data.delete).to.not.be.null;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "graphql",
+                            "graphql": {
+                                "query": "mutation DeleteAnnouncement($announcementId: ID!) {\n    delete(announcement_id: $announcementId) {\n        announcement_id\n        title\n        content_url\n        create_time\n        update_time\n        views\n    }\n}",
+                                "variables": "{\n    \"announcementId\": \"{{announcement_id}}\"\n}"
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/graphql",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "graphql"
+                            ]
+                        },
+                        "description": "Deletes the announcement created for this test flow."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "8. Get By ID (Verify Delete)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "const response = pm.response.json();",
+                                    "",
+                                    "pm.test(\"Announcement is null, confirming deletion\", function () {",
+                                    "    pm.expect(response.data.getById).to.be.null;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "graphql",
+                            "graphql": {
+                                "query": "query GetAnnouncementById($announcementId: ID!) {\n    getById(announcement_id: $announcementId) {\n        announcement_id\n        title\n        content_url\n        create_time\n        update_time\n        views\n    }\n}",
+                                "variables": "{\n    \"announcementId\": \"{{announcement_id}}\"\n}"
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/graphql",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "graphql"
+                            ]
+                        },
+                        "description": "Tries to fetch the deleted announcement. This should return null or an error, confirming deletion."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "9. Get All (Final State)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "const response = pm.response.json();",
+                                    "const deletedId = pm.collectionVariables.get(\"announcement_id\");",
+                                    "",
+                                    "pm.test(\"Deleted announcement is not in the list\", function () {",
+                                    "    const announcementIds = response.data.getAll.map(ann => ann.announcement_id);",
+                                    "    pm.expect(announcementIds).to.not.include(deletedId);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "graphql",
+                            "graphql": {
+                                "query": "query GetAllAnnouncements {\n    getAll {\n        announcement_id\n        title\n        content_url\n        create_time\n        update_time\n        views\n    }\n}",
+                                "variables": ""
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/graphql",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "graphql"
+                            ]
+                        },
+                        "description": "Fetches all announcements to see the final state, confirming the test item is gone."
+                    },
+                    "response": []
+                }
+            ]
+        }
+    ],
+    "variable": [
+        {
+            "key": "baseUrl",
+            "type": "string"
+        },
+        {
+            "key": "announcement_id",
+            "value": "",
+            "type": "string"
+        }
+    ]
+}
