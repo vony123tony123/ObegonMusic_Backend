@@ -1,0 +1,60 @@
+version: '3.8'
+
+# 這個 docker-compose 檔案專為開發環境設計
+services:
+  # 'dev' 服務是我們主要的開發容器
+  dev:
+    build:
+      context: .
+      target: development
+    container_name: my-express-app-dev
+    ports:
+      - "3000:3000"
+      - "9229:9229"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    # 新增 depends_on，確保 db 服務先於 dev 服務啟動
+    depends_on:
+      db:
+        condition: service_healthy
+    # 修改 environment，讓應用連接到 Docker 內的 db 服務
+    # 使用 ${} 語法來讀取 .env 檔案中的變數
+    environment:
+      - DB_HOST=db
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_PORT=${DB_PORT}
+
+  # 'db' 服務是我們的 PostgreSQL 資料庫容器
+  db:
+    image: postgres:15
+    container_name: my-express-db
+    # 使用 environment 設定資料庫的超級使用者和預設資料庫
+    # 這裡也改用 .env 檔案中的變數
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    # 使用 volumes 將資料庫資料持久化，並掛載初始化腳本
+    volumes:
+      # postgres_data 這個 named volume 會將資料庫的資料保存在主機上，避免容器刪除後資料遺失
+      - postgres_data:/var/lib/postgresql/data
+      # 這個 bind mount 會將本地的 ./docker-entrypoint-initdb.d 目錄掛載到容器中
+      # PostgreSQL 容器在首次啟動時，會自動執行此目錄下的 .sql 和 .sh 腳本
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    ports:
+      # 將容器的 5432 port 映射到主機的 5433 port
+      # 使用 5433 是為了避免與您主機上可能已安裝的 PostgreSQL (預設使用 5432) 發生衝突
+      - "5433:5432"
+    # 健康檢查，確保資料庫服務已準備就緒，dev 服務才會啟動
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+# 定義 named volume，用於持久化資料庫資料
+volumes:
+  postgres_data:

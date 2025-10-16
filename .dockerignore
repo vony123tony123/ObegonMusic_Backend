@@ -1,0 +1,29 @@
+# Git and version control
+.git
+.gitignore
+
+# Docker files
+Dockerfile
+docker-compose.yml
+docker-compose.prod.yml
+.dockerignore
+
+# Node.js dependencies
+node_modules
+npm-debug.log
+pnpm-debug.log
+
+# Build output
+dist
+
+# CI/CD configuration
+Jenkinsfile
+
+# Documentation
+*.md
+
+# Editor and OS specific
+.vscode
+.idea
+.DS_Store
+Thumbs.db

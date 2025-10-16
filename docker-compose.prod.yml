@@ -1,0 +1,41 @@
+version: '3.8'
+
+# This docker-compose file is designed for the production environment
+# It is intended to be used in a CI/CD pipeline or for final deployment
+
+services:
+  app:
+    # Build the image using the Dockerfile in the current directory
+    build:
+      context: .
+      # Specify to build only the 'production' stage from the Dockerfile
+      target: production
+    # Set a container name for easy identification
+    container_name: my-express-app-prod
+    # Map the host's port 3000 to the container's port 3000
+    ports:
+      - "3000:3000"
+    # Restart policy: ensures the container restarts automatically if it crashes
+    restart: always
+    # Environment variables for production
+    # It's highly recommended to manage secrets using Docker secrets or other secret management tools
+    environment:
+      - NODE_ENV=production
+      # - DATABASE_URL=your_production_database_connection_string
+      # - SECRET_KEY=your_production_secret_key
+
+# If you have other services like a database, you can add them here
+# For example:
+#  db:
+#    image: postgres:15
+#    container_name: my-express-db-prod
+#    restart: always
+#    environment:
+#      - POSTGRES_USER=prod_user
+#      - POSTGRES_PASSWORD=your_prod_password # Use secrets for this!
+#      - POSTGRES_DB=myproddatabase
+#    volumes:
+#      - postgres_prod_data:/var/lib/postgresql/data
+
+# volumes:
+#   postgres_prod_data:
