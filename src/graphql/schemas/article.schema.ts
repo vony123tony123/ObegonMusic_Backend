@@ -46,7 +46,6 @@ export const articleTypeDefs = `
   extend type Query {
     getArticles: [Article!]!
     getArticleById(article_id: ID!): Article
-    searchArticles(params: ArticleSearchInput!): [Article!]!
   }
 
   extend type Mutation {

@@ -1,4 +1,4 @@
-import { AnnouncementController } from '../../controllers/Annoucement.controller';
+import { AnnouncementController } from '../../services/Annoucement.service';
 
 export const announcementResolvers = {
   getAll: () => AnnouncementController.getAll(),
