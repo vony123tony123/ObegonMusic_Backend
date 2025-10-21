@@ -1,4 +1,4 @@
 export class User {
-  user_id: string; // bigint mapped to string
-  name: string;
+  user_id: bigint; // bigint mapped to string
+  name?: string;
 }

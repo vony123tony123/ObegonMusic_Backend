@@ -17,11 +17,13 @@ export const articleTypeDefs = `
   type Article {
     article_id: ID!
     title: String!
-    content_url: String
-    views: Int
-    user: User
-    category: Category
-    tags: [Tag!]
+    content_url: String!
+    views: Int!
+    user: User!
+    category: Category!
+    tags: [Tag]
+    createTime: String
+    updateTime: String
   }
 
   input ArticleInput {
@@ -30,26 +32,27 @@ export const articleTypeDefs = `
     content_url: String!
     user_id: ID!
     category_id: ID!
-    tags: [ID!]
+    tags: [ID]
   }
 
-  input ArticleSearchInput {
+  input ArticleSearchParams {
+    userName: String
+    tagName: String
     title: String
-    content_url: String
-    user_id: ID
-    category_id: ID
-    tag_ids: [String!]
-    min_views: Int
-    max_views: Int
+    limit: Int
+    offset: Int
+    orderBy: String
+    orderDir: String
   }
 
   extend type Query {
     getArticles: [Article!]!
     getArticleById(article_id: ID!): Article
+    searchArticles(params: ArticleSearchParams!): [Article!]!
   }
 
   extend type Mutation {
-    createArticle(input: ArticleInput!): Article
+    createArticle(input: ArticleInput!): Article!
     deleteArticle(article_id: ID!): Article
   }
 `;

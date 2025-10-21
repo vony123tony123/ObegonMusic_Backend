@@ -140,42 +140,61 @@
             "name": "4. Search Articles",
             "event": [
                 {
-                    "listen": "test",
-                    "script": {
-                        "exec": [
-                            "pm.test(\"Status code is 200\", () => { pm.response.to.have.status(200); });",
-                            "const response = pm.response.json();",
-                            "pm.test(\"Search returned results\", () => {",
-                            "    pm.expect(response.data.searchArticles).to.be.an('array').and.not.be.empty;",
-                            "});"
-                        ],
-                        "type": "text/javascript"
-                    }
+                "listen": "test",
+                "script": {
+                    "exec": [
+                    "// ✅ 狀態碼檢查",
+                    "pm.test(\"Status code is 200\", function () {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "// ✅ 回傳結構檢查",
+                    "const jsonData = pm.response.json();",
+                    "pm.test(\"Response contains data.searchArticles\", function () {",
+                    "  pm.expect(jsonData).to.have.property('data');",
+                    "  pm.expect(jsonData.data).to.have.property('searchArticles');",
+                    "});",
+                    "",
+                    "// ✅ 型態與結果檢查",
+                    "const articles = jsonData.data.searchArticles;",
+                    "pm.test(\"searchArticles is an array\", function () {",
+                    "  pm.expect(articles).to.be.an('array');",
+                    "});",
+                    "",
+                    "if (articles.length > 0) {",
+                    "  pm.test(\"Search returned results\", function () {",
+                    "    pm.expect(articles[0]).to.have.property('article_id');",
+                    "    pm.expect(articles[0]).to.have.property('title');",
+                    "  });",
+                    "} else {",
+                    "  pm.test(\"Search returned no results — FAIL if expected data missing\", function () {",
+                    "    pm.expect.fail('No articles matched the search criteria.');",
+                    "  });",
+                    "}"
+                    ],
+                    "type": "text/javascript"
+                }
                 }
             ],
             "request": {
                 "method": "POST",
                 "header": [
-                    {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                    }
+                {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                }
                 ],
                 "body": {
-                    "mode": "graphql",
-                    "graphql": {
-                        "query": "query SearchArticles($params: ArticleSearchInput!) {\n  searchArticles(params: $params) {\n    article_id\n    title\n    views\n  }\n}",
-                        "variables": "{\n    \"params\": {\n        \"title\": \"Postman\"\n    }\n}"
-                    }
+                "mode": "graphql",
+                "graphql": {
+                    "query": "query SearchArticles($params: ArticleSearchParams!) {\n  searchArticles(params: $params) {\n    article_id\n    title\n    views\n    createTime\n    user { name }\n    category { name }\n    tags { tag_name }\n  }\n}",
+                    "variables": "{\n  \"params\": {\n    \"userName\": \"學長\",\n    \"tagName\": \"音樂\",\n    \"title\": \"專輯\",\n    \"limit\": 5,\n    \"offset\": 0,\n    \"orderBy\": \"create_time\",\n    \"orderDir\": \"DESC\"\n  }\n}"
+                }
                 },
                 "url": {
-                    "raw": "{{baseUrl}}/graphql",
-                    "host": [
-                        "{{baseUrl}}"
-                    ],
-                    "path": [
-                        "graphql"
-                    ]
+                "raw": "{{baseUrl}}/graphql",
+                "host": ["{{baseUrl}}"],
+                "path": ["graphql"]
                 }
             },
             "response": []

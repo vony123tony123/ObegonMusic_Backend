@@ -3,13 +3,13 @@ import { Category } from "./category";
 import { Tag } from "./tag";
 
 export interface Article {
-  article_id: string;
+  article_id: bigint;
   title: string;
   content_url: string;
-  views: number;
-  user_id: string;
-  category_id: string;
-  user?: User;
-  category?: Category;
+  views?: number;
+  user: User;
+  category: Category;
   tags?: Tag[];
+  createTime?: String;
+  updateTime?: String;
 }

@@ -1,4 +1,4 @@
 export class Category {
-  category_id: string;
-  name: string;
+  category_id: bigint;
+  name?: string;
 }

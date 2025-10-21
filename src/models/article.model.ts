@@ -1,21 +1,13 @@
 import { db, pgp } from "../db";
 import { Article } from "../types/article";
 
-export type ArticleSearchParams = Partial<
-  Pick<Article, 'title' | 'content_url' | 'user_id' | 'category_id'>
-> & {
-  tag_ids?: string[];
-  min_views?: number;
-  max_views?: number;
-};
-
 export class ArticleModel {
   // TRUE NUCLEAR OPTION: Use a single, dedicated client to bypass the connection pool entirely.
-  static async create(article: Partial<Pick<Article, 'article_id'>> & Omit<Article, 'views' | 'user' | 'category' | 'tags'> & { tags?: string[] }): Promise<Article> {
+  static async create(article: Article): Promise<Article> {
     let client: any = null;
     try {
       const columns = ['title', 'content_url', 'user_id', 'category_id'];
-      const values = [article.title, article.content_url, parseInt(article.user_id!, 10), parseInt(article.category_id!, 10)];
+      const values = [article.title, article.content_url, article.user.user_id, article.category.category_id];
 
       if (article.article_id) {
         columns.unshift('article_id');
@@ -33,7 +25,7 @@ export class ArticleModel {
            RETURNING *`,
           values
         );
-        const article_id = result.article_id.toString();
+        const article_id = result.article_id;
         if (article.tags && article.tags.length > 0) {
           await t.none(
             `INSERT INTO article_tags (article_id, tag_id)
@@ -41,7 +33,7 @@ export class ArticleModel {
             [article_id, article.tags]
           );
         }
-        return result.article_id.toString();
+        return result.article_id;
       });
       
       // Refetch the complete article data to ensure consistency, using the same transaction.
@@ -73,15 +65,15 @@ export class ArticleModel {
       WHERE at.article_id = $1`, [id]);
 
     return {
-      article_id: article.article_id.toString(),
+      article_id: article.article_id,
       title: article.title,
       content_url: article.content_url,
       views: article.views,
-      user_id: article.user_id?.toString(),
-      category_id: article.category_id?.toString(),
-      user: article.u_user_id ? { user_id: article.u_user_id.toString(), name: article.u_name } : undefined,
-      category: article.c_category_id ? { category_id: article.c_category_id.toString(), name: article.c_name } : undefined,
-      tags: tags.map(t => ({ tag_id: t.tag_id.toString(), tag_name: t.tag_name }))
+      user: article.u_user_id ? { user_id: article.u_user_id, name: article.u_name } : undefined,
+      category: article.c_category_id ? { category_id: article.c_category_id, name: article.c_name } : undefined,
+      tags: tags.map(t => ({ tag_id: t.tag_id, tag_name: t.tag_name })),
+      createTime: article.create_time,
+      updateTime: article.update_time,
     };
   }
 
@@ -104,18 +96,18 @@ export class ArticleModel {
       JOIN tags t ON at.tag_id = t.tag_id`);
 
     return articles.map(article => {
-      const tags = articleTags.filter(at => at.article_id.toString() === article.article_id.toString())
-                               .map(t => ({ tag_id: t.tag_id.toString(), tag_name: t.tag_name }));
+      const tags = articleTags.filter(at => at.article_id === article.article_id)
+                               .map(t => ({ tag_id: t.tag_id, tag_name: t.tag_name }));
       return {
-        article_id: article.article_id.toString(),
+        article_id: article.article_id,
         title: article.title,
         content_url: article.content_url,
         views: article.views,
-        user_id: article.user_id?.toString(),
-        category_id: article.category_id?.toString(),
-        user: article.u_user_id ? { user_id: article.u_user_id.toString(), name: article.u_name } : undefined,
-        category: article.c_category_id ? { category_id: article.c_category_id.toString(), name: article.c_name } : undefined,
-        tags,
+        user: article.u_user_id ? { user_id: article.u_user_id, name: article.u_name } : undefined,
+        category: article.c_category_id ? { category_id: article.c_category_id, name: article.c_name } : undefined,
+        tags: tags.map(t => ({ tag_id: t.tag_id, tag_name: t.tag_name })),
+        createTime: article.create_time,
+        updateTime: article.update_time,
       };
     });
   }
@@ -130,4 +122,201 @@ export class ArticleModel {
     });
     return existing;
   }
+
+  static async getByUserName(
+      userName: string,
+      limit: number,
+      offset: number,
+      orderBy: string,
+      orderDir: 'ASC' | 'DESC'
+  ): Promise<Article[]> {
+      // 白名單檢查，防止 SQL injection
+      const allowedColumns = ['article_id', 'title', 'content_url', 'views', 'user_id', 'category_id', 'create_time'];
+      const allowedDirs: ('ASC' | 'DESC')[] = ['ASC', 'DESC'];
+
+      if (!allowedColumns.includes(orderBy)) {
+          throw new Error(`Invalid orderBy column: ${orderBy}`);
+      }
+      if (!allowedDirs.includes(orderDir)) {
+          throw new Error(`Invalid order direction: ${orderDir}`);
+      }
+
+      const sql = `
+        SELECT a.*
+        FROM articles a
+        JOIN users u ON a.user_id = u.user_id
+        WHERE u.name ILIKE $1
+        ORDER BY ${orderBy} ${orderDir}
+        LIMIT $2 OFFSET $3
+      `;
+
+      const articles = await db.any(sql, [`%${userName}%`, limit, offset]);
+      
+      return articles.map(article => {
+        return {
+          article_id: article.article_id,
+          title: article.title,
+          content_url: article.content_url,
+          views: article.views,
+          user: { user_id: article.user_id},
+          category: { category_id: article.category_id},
+          createTime: article.create_time,
+          updateTime: article.update_time,
+        };
+      });
+  }
+
+  static async getByTagName(
+    tagName: string,
+    limit: number,
+    offset: number,
+    orderBy: string,
+    orderDir: 'ASC' | 'DESC'
+  ): Promise<Article[]> {
+    const allowedColumns = ['article_id', 'title', 'content_url', 'views', 'user_id', 'category_id', 'create_time'];
+    const allowedDirs: ('ASC' | 'DESC')[] = ['ASC', 'DESC'];
+
+    if (!allowedColumns.includes(orderBy)) {
+        throw new Error(`Invalid orderBy column: ${orderBy}`);
+    }
+    if (!allowedDirs.includes(orderDir)) {
+        throw new Error(`Invalid order direction: ${orderDir}`);
+    }
+
+    const sql = `
+      SELECT DISTINCT a.*
+      FROM articles a
+      JOIN article_tags at ON a.article_id = at.article_id
+      JOIN tags t ON at.tag_id = t.tag_id
+      WHERE t.tag_name ILIKE $1
+      ORDER BY ${orderBy} ${orderDir}
+      LIMIT $2 OFFSET $3
+    `;
+
+    const articles =  await db.any(sql, [`%${tagName}%`, limit, offset]);
+    return articles.map(article => {
+      return {
+        article_id: article.article_id,
+        title: article.title,
+        content_url: article.content_url,
+        views: article.views,
+        user: { user_id: article.user_id},
+        category: { category_id: article.category_id},
+        createTime: article.create_time,
+        updateTime: article.update_time,
+      };
+    });
+  }
+
+
+  static async getByTitle(
+    title: string,
+    limit: number,
+    offset: number,
+    orderBy: string,
+    orderDir: 'ASC' | 'DESC'
+    ): Promise<Article[]> {
+    // 白名單檢查，避免 SQL injection
+    const allowedColumns = ['article_id', 'title', 'content_url', 'views', 'user_id', 'category_id', 'create_time'];
+    const allowedDirs: ('ASC' | 'DESC')[] = ['ASC', 'DESC'];
+
+    if (!allowedColumns.includes(orderBy)) {
+        throw new Error(`Invalid orderBy column: ${orderBy}`);
+    }
+    if (!allowedDirs.includes(orderDir)) {
+        throw new Error(`Invalid order direction: ${orderDir}`);
+    }
+
+    const sql = `
+      SELECT *
+      FROM articles
+      WHERE title ILIKE $1
+      ORDER BY ${orderBy} ${orderDir}
+      LIMIT $2 OFFSET $3
+    `;
+
+    const articles =  await db.any(sql, [`%${title}%`, limit, offset]);
+    return articles.map(article => {
+      return {
+        article_id: article.article_id,
+        title: article.title,
+        content_url: article.content_url,
+        views: article.views,
+        user: { user_id: article.user_id},
+        category: { category_id: article.category_id},
+        createTime: article.create_time,
+        updateTime: article.update_time,
+      };
+    });
+  }
+
+
+  static async searchCombined(
+    userName?: string,
+    tagName?: string,
+    title?: string,
+    limit = 10,
+    offset = 0,
+    orderBy = 'create_time',
+    orderDir: 'ASC' | 'DESC' = 'DESC'
+  ): Promise<Article[]> {
+    // 白名單檢查，避免 SQL injection
+    const allowedColumns = ['article_id', 'title', 'content_url', 'views', 'user_id', 'category_id', 'create_time'];
+    const allowedDirs: ('ASC' | 'DESC')[] = ['ASC', 'DESC'];
+
+    if (!allowedColumns.includes(orderBy)) {
+        throw new Error(`Invalid orderBy column: ${orderBy}`);
+    }
+    if (!allowedDirs.includes(orderDir)) {
+        throw new Error(`Invalid order direction: ${orderDir}`);
+    }
+
+    let sql = `
+      SELECT DISTINCT a.*
+      FROM articles a
+      LEFT JOIN users u ON a.user_id = u.user_id
+      LEFT JOIN article_tags at ON a.article_id = at.article_id
+      LEFT JOIN tags t ON at.tag_id = t.tag_id
+      WHERE 1=1
+    `;
+
+    const params: any[] = [];
+
+    if (userName) {
+        params.push(`%${userName}%`);
+        sql += ` AND u.name ILIKE $${params.length}`;
+    }
+
+    if (tagName) {
+        params.push(`%${tagName}%`);
+        sql += ` AND t.tag_name ILIKE $${params.length}`;
+    }
+
+    if (title) {
+        params.push(`%${title}%`);
+        sql += ` AND a.title ILIKE $${params.length}`;
+    }
+
+    // 最後加上 LIMIT 和 OFFSET
+    params.push(limit, offset);
+    sql += ` ORDER BY ${orderBy} ${orderDir} LIMIT $${params.length - 1} OFFSET $${params.length}`;
+
+    // pg-promise 查詢
+    const articles = await db.any(sql, params);
+    return articles.map(article => {
+      return {
+        article_id: article.article_id,
+        title: article.title,
+        content_url: article.content_url,
+        views: article.views,
+        user: { user_id: article.user_id},
+        category: { category_id: article.category_id},
+        createTime: article.create_time,
+        updateTime: article.update_time,
+      };
+    });
+  }
+
+
+
 }
