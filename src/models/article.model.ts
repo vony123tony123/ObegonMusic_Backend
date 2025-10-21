@@ -130,4 +130,152 @@ export class ArticleModel {
     });
     return existing;
   }
+
+  static async getByUserName(
+      userName: string,
+      limit: number,
+      offset: number,
+      orderBy: string,
+      orderDir: 'ASC' | 'DESC'
+  ): Promise<Article[]> {
+      // 白名單檢查，防止 SQL injection
+      const allowedColumns = ['article_id', 'title', 'content_url', 'views', 'user_id', 'category_id'];
+      const allowedDirs: ('ASC' | 'DESC')[] = ['ASC', 'DESC'];
+
+      if (!allowedColumns.includes(orderBy)) {
+          throw new Error(`Invalid orderBy column: ${orderBy}`);
+      }
+      if (!allowedDirs.includes(orderDir)) {
+          throw new Error(`Invalid order direction: ${orderDir}`);
+      }
+
+      const sql = `
+        SELECT a.*
+        FROM articles a
+        JOIN users u ON a.user_id = u.user_id
+        WHERE u.name ILIKE $1
+        ORDER BY ${orderBy} ${orderDir}
+        LIMIT $2 OFFSET $3
+      `;
+
+      return await db.any(sql, [`%${userName}%`, limit, offset]);
+  }
+
+  static async getByTagName(
+    tagName: string,
+    limit: number,
+    offset: number,
+    orderBy: string,
+    orderDir: 'ASC' | 'DESC'
+  ): Promise<Article[]> {
+    const allowedColumns = ['article_id', 'title', 'content_url', 'views', 'user_id', 'category_id'];
+    const allowedDirs: ('ASC' | 'DESC')[] = ['ASC', 'DESC'];
+
+    if (!allowedColumns.includes(orderBy)) {
+        throw new Error(`Invalid orderBy column: ${orderBy}`);
+    }
+    if (!allowedDirs.includes(orderDir)) {
+        throw new Error(`Invalid order direction: ${orderDir}`);
+    }
+
+    const sql = `
+      SELECT DISTINCT a.*
+      FROM articles a
+      JOIN article_tags at ON a.article_id = at.article_id
+      JOIN tags t ON at.tag_id = t.tag_id
+      WHERE t.tag_name ILIKE $1
+      ORDER BY ${orderBy} ${orderDir}
+      LIMIT $2 OFFSET $3
+    `;
+
+    return await db.any(sql, [`%${tagName}%`, limit, offset]);
+  }
+
+
+  static async getByTitle(
+    title: string,
+    limit: number,
+    offset: number,
+    orderBy: string,
+    orderDir: 'ASC' | 'DESC'
+    ): Promise<Article[]> {
+    // 白名單檢查，避免 SQL injection
+    const allowedColumns = ['article_id', 'title', 'content_url', 'views', 'user_id', 'category_id'];
+    const allowedDirs: ('ASC' | 'DESC')[] = ['ASC', 'DESC'];
+
+    if (!allowedColumns.includes(orderBy)) {
+        throw new Error(`Invalid orderBy column: ${orderBy}`);
+    }
+    if (!allowedDirs.includes(orderDir)) {
+        throw new Error(`Invalid order direction: ${orderDir}`);
+    }
+
+    const sql = `
+      SELECT *
+      FROM articles
+      WHERE title ILIKE $1
+      ORDER BY ${orderBy} ${orderDir}
+      LIMIT $2 OFFSET $3
+    `;
+
+    return await db.any(sql, [`%${title}%`, limit, offset]);
+  }
+
+
+  static async searchCombined(
+    userName?: string,
+    tagName?: string,
+    title?: string,
+    limit = 10,
+    offset = 0,
+    orderBy = 'create_time',
+    orderDir: 'ASC' | 'DESC' = 'DESC'
+  ): Promise<Article[]> {
+    // 白名單檢查，避免 SQL injection
+    const allowedColumns = ['article_id', 'title', 'content_url', 'views', 'user_id', 'category_id', 'create_time'];
+    const allowedDirs: ('ASC' | 'DESC')[] = ['ASC', 'DESC'];
+
+    if (!allowedColumns.includes(orderBy)) {
+        throw new Error(`Invalid orderBy column: ${orderBy}`);
+    }
+    if (!allowedDirs.includes(orderDir)) {
+        throw new Error(`Invalid order direction: ${orderDir}`);
+    }
+
+    let sql = `
+      SELECT DISTINCT a.*
+      FROM articles a
+      LEFT JOIN users u ON a.user_id = u.user_id
+      LEFT JOIN article_tags at ON a.article_id = at.article_id
+      LEFT JOIN tags t ON at.tag_id = t.tag_id
+      WHERE 1=1
+    `;
+
+    const params: any[] = [];
+
+    if (userName) {
+        params.push(`%${userName}%`);
+        sql += ` AND u.name ILIKE $${params.length}`;
+    }
+
+    if (tagName) {
+        params.push(`%${tagName}%`);
+        sql += ` AND t.tag_name ILIKE $${params.length}`;
+    }
+
+    if (title) {
+        params.push(`%${title}%`);
+        sql += ` AND a.title ILIKE $${params.length}`;
+    }
+
+    // 最後加上 LIMIT 和 OFFSET
+    params.push(limit, offset);
+    sql += ` ORDER BY ${orderBy} ${orderDir} LIMIT $${params.length - 1} OFFSET $${params.length}`;
+
+    // pg-promise 查詢
+    return await db.any(sql, params);
+  }
+
+
+
 }

@@ -33,6 +33,16 @@ export const articleTypeDefs = `
     tags: [ID!]
   }
 
+  input ArticleSearchParams {
+    userName: String
+    tagName: String
+    title: String
+    limit: Int
+    offset: Int
+    orderBy: String
+    orderDir: String
+  }
+
   input ArticleSearchInput {
     title: String
     content_url: String
@@ -46,6 +56,7 @@ export const articleTypeDefs = `
   extend type Query {
     getArticles: [Article!]!
     getArticleById(article_id: ID!): Article
+    searchArticles(params: ArticleSearchParams!): [Article!]!
   }
 
   extend type Mutation {
