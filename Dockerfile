@@ -27,7 +27,7 @@ USER node
 # --watch src 監聽 src 目錄下的所有檔案變動
 # --ext ts,json 指定監聽的副檔名
 # --inspect=0.0.0.0:9229 開啟除錯模式，並允許從外部連接
-CMD ["nodemon", "--watch", "src", "--ext", "ts,json", "--ignore", "src/**/*.test.ts", "--exec", "ts-node ./bin/www.ts"]
+CMD ["npx", "nodemon", "--watch", "src", "--ext", "ts,json", "--ignore", "src/**/*.test.ts", "--exec", "ts-node ./bin/www.ts"]
 
 
 # --- Stage 2: Build Stage ---

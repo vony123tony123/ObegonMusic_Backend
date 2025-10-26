@@ -5,11 +5,12 @@ services:
   # 'dev' 服務是我們主要的開發容器
   dev:
     build:
-      context: .
+      context: ./myExpressApp
       target: development
+      dockerfile: Dockerfile
     container_name: my-express-app-dev
     ports:
-      - "3000:3000"
+      - "${BACKEND_PORT}:3000"
       - "9229:9229"
     volumes:
       - .:/app
@@ -29,7 +30,7 @@ services:
 
   # 'db' 服務是我們的 PostgreSQL 資料庫容器
   db:
-    image: postgres:15
+    image: postgres:17
     container_name: my-express-db
     # 使用 environment 設定資料庫的超級使用者和預設資料庫
     # 這裡也改用 .env 檔案中的變數
@@ -47,7 +48,7 @@ services:
     ports:
       # 將容器的 5432 port 映射到主機的 5433 port
       # 使用 5433 是為了避免與您主機上可能已安裝的 PostgreSQL (預設使用 5432) 發生衝突
-      - "5433:5432"
+      - "${DB_PORT}:5432"
     # 健康檢查，確保資料庫服務已準備就緒，dev 服務才會啟動
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
@@ -55,6 +56,23 @@ services:
       timeout: 5s
       retries: 5
 
+  # 這個 pgadmin 服務是用來提供一個圖形化介面來管理 PostgreSQL 資料庫
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
 # 定義 named volume，用於持久化資料庫資料
 volumes:
   postgres_data:
+  pgadmin_data:
